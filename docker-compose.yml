@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  sentinel-simulator:
+    build: .
+    container_name: sentinel_nodes_simulator
+    restart: unless-stopped
+    environment:
+      - SENTINEL_API_URL=${SENTINEL_API_URL:-https://sentinel.mguillermo.com/api/v1}
+      - TELEMETRY_ENDPOINT=${TELEMETRY_ENDPOINT:-/telemetry/}
+      - SEND_INTERVAL_SECONDS=${SEND_INTERVAL_SECONDS:-600}
+      - MASTER_API_KEY=${MASTER_API_KEY:-sentinel_master_key_chancay_2026_secure}
+      - AUTO_PROVISION_NODES=${AUTO_PROVISION_NODES:-true}
+      - ANOMALY_PROBABILITY=${ANOMALY_PROBABILITY:-0.08}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_KEY_NODO_01=${API_KEY_NODO_01:-hash_key_cabecera_secure_01}
+      - API_KEY_NODO_02=${API_KEY_NODO_02:-hash_key_pacaraos_secure_02}
+      - API_KEY_NODO_03=${API_KEY_NODO_03:-hash_key_conduccion_secure_02}
+      - API_KEY_NODO_04=${API_KEY_NODO_04:-hash_key_huando_secure_04}
+      - API_KEY_NODO_05=${API_KEY_NODO_05:-hash_key_parcela_secure_03}
+      - API_KEY_NODO_06=${API_KEY_NODO_06:-hash_key_puerto_secure_06}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
