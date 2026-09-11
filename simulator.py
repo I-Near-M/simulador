@@ -2,10 +2,17 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-SENTINEL-H2O - SIMULADOR DINÁMICO DE NODOS TELEMÉTRICOS DE CAMPO
+SENTINEL-H2O - SIMULADOR DINÁMICO DE NODOS TELEMÉTRICOS DE CAMPO (PRODUCCIÓN VPS)
 ================================================================================
 Simula el comportamiento físico, electroquímico e hidrodinámico de las 6
-estaciones de monitoreo en la cuenca del Río Chancay-Huaral.
+estaciones de monitoreo registradas en la cuenca del Río Chancay-Huaral:
+
+1. NODO-01-CABECERA   (Estación Lagunas Vichaycocha / Bofedales - 4350 msnm)
+2. NODO-02-RAVIRA     (Estación Subcuenca Ravira / Pacaraos - 2850 msnm)
+3. NODO-03-ACOS       (Estación Conducción Matriz Acos - Santo Domingo - 1250 msnm)
+4. NODO-04-HUANDO     (Estación Bocatoma Matriz Huando - Palpa - 450 msnm)
+5. NODO-05-HUAYOPAMPA (Estación Sector Huayopampa / Parcela Piloto - 320 msnm)
+6. NODO-06-CHANCAY    (Estación Valle Bajo y Desembocadura Chancay - 25 msnm)
 
 Emula el envío continuo de telemetría hacia la API REST de Sentinel-H2O
 con ciclos diurnos/nocturnos, correlación física de variables, carga solar de
@@ -26,7 +33,7 @@ import urllib.request
 import urllib.error
 from typing import Dict, Any, List, Optional, Tuple
 
-# Cargar variables de entorno simples desde .env si existe (sin requerir python-dotenv obligatorio)
+# Cargar variables de entorno simples desde .env si existe
 def load_simple_env(env_path: str = ".env"):
     if os.path.exists(env_path):
         try:
@@ -47,11 +54,10 @@ load_simple_env()
 # ============================================================================
 # CONFIGURACIÓN GENERAL DEL SERVICIO
 # ============================================================================
-API_BASE_URL = os.getenv("SENTINEL_API_URL", "http://localhost:8000/api/v1").rstrip("/")
+API_BASE_URL = os.getenv("SENTINEL_API_URL", "https://sentinel.mguillermo.com/api/v1").rstrip("/")
 TELEMETRY_ENDPOINT = os.getenv("TELEMETRY_ENDPOINT", "/telemetry/")
-SEND_INTERVAL_SECONDS = int(os.getenv("SEND_INTERVAL_SECONDS", "600"))  # 10 min por defecto
-MASTER_API_KEY = os.getenv("MASTER_API_KEY", "sentinel_master_key_chancay_2026_secure")
-AUTO_PROVISION_NODES = os.getenv("AUTO_PROVISION_NODES", "true").lower() in ("true", "1", "yes")
+SEND_INTERVAL_SECONDS = int(os.getenv("SEND_INTERVAL_SECONDS", "600"))  # 10 min por defecto (600s)
+MASTER_API_KEY = os.getenv("MASTER_API_KEY", "sentinel_h2o_master_secret_2026")
 ANOMALY_PROBABILITY = float(os.getenv("ANOMALY_PROBABILITY", "0.08"))  # 8% prob de evento por ciclo
 JITTER_RATIO = float(os.getenv("STATION_JITTER_RATIO", "0.015"))       # 1.5% ruido gaussiano
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -69,8 +75,8 @@ logger = logging.getLogger("SentinelSimulator")
 STATIONS_PROFILES: List[Dict[str, Any]] = [
     {
         "id_nodo": "NODO-01-CABECERA",
-        "nombre": "Estación Cabecera Lagunas Vichaycocha",
-        "api_key": os.getenv("API_KEY_NODO_01", "hash_key_cabecera_secure_01"),
+        "nombre": "Estación Lagunas Vichaycocha / Bofedales",
+        "api_key": os.getenv("API_KEY_NODO_01", "sec_key_nodo_01_cabecera_67c935eec78775536188d962"),
         "sector": "CUENCA_ALTA",
         "subcuenca": "Vichaycocha",
         "cota_msnm": 4350.0,
@@ -90,12 +96,12 @@ STATIONS_PROFILES: List[Dict[str, Any]] = [
         "tipo_fuente": "LAGUNA_REPRESADA"
     },
     {
-        "id_nodo": "NODO-02-PACARAOS",
-        "nombre": "Estación Aguas Termominerales Pacaraos",
-        "api_key": os.getenv("API_KEY_NODO_02", "hash_key_pacaraos_secure_02"),
+        "id_nodo": "NODO-02-RAVIRA",
+        "nombre": "Estación Subcuenca Ravira / Pacaraos",
+        "api_key": os.getenv("API_KEY_NODO_02", "sec_key_ravira_secure_02"),
         "sector": "CUENCA_ALTA_MEDIA",
-        "subcuenca": "Pacaraos",
-        "cota_msnm": 2800.0,
+        "subcuenca": "Ravira",
+        "cota_msnm": 2850.0,
         "lat": -11.1520,
         "lon": -76.6830,
         "base_temp_c": 14.0,
@@ -109,12 +115,12 @@ STATIONS_PROFILES: List[Dict[str, Any]] = [
         "caudal_k": 1.80,
         "caudal_n": 1.55,
         "avg_rssi": 19,
-        "tipo_fuente": "RIO_PRINCIPAL"
+        "tipo_fuente": "RIO_MONTANA"
     },
     {
-        "id_nodo": "NODO-02-CONDUCCION",
-        "nombre": "Estación Conducción Central Acos - Santo Domingo",
-        "api_key": os.getenv("API_KEY_NODO_03", "hash_key_conduccion_secure_02"),
+        "id_nodo": "NODO-03-ACOS",
+        "nombre": "Estación Conducción Matriz Acos - Santo Domingo",
+        "api_key": os.getenv("API_KEY_NODO_03", "sec_key_acos_secure_03"),
         "sector": "CUENCA_MEDIA",
         "subcuenca": "Acos",
         "cota_msnm": 1250.0,
@@ -135,11 +141,11 @@ STATIONS_PROFILES: List[Dict[str, Any]] = [
     },
     {
         "id_nodo": "NODO-04-HUANDO",
-        "nombre": "Estación Agrícola Fundo Huando",
-        "api_key": os.getenv("API_KEY_NODO_04", "hash_key_huando_secure_04"),
-        "sector": "CUENCA_MEDIA_BAJA",
-        "subcuenca": "Huando",
-        "cota_msnm": 650.0,
+        "nombre": "Estación Bocatoma Matriz Huando - Palpa",
+        "api_key": os.getenv("API_KEY_NODO_04", "sec_key_huando_secure_04"),
+        "sector": "CUENCA_BAJA",
+        "subcuenca": "Valle_Huando",
+        "cota_msnm": 450.0,
         "lat": -11.4120,
         "lon": -76.9530,
         "base_temp_c": 20.5,
@@ -153,14 +159,14 @@ STATIONS_PROFILES: List[Dict[str, Any]] = [
         "caudal_k": 1.20,
         "caudal_n": 1.50,
         "avg_rssi": 28,
-        "tipo_fuente": "CANAL_DERIVACION"
+        "tipo_fuente": "BOCATOMA_VALLE"
     },
     {
-        "id_nodo": "NODO-03-PARCELA",
-        "nombre": "Estación Bocatoma Parcela Piloto Huayopampa",
-        "api_key": os.getenv("API_KEY_NODO_05", "hash_key_parcela_secure_03"),
+        "id_nodo": "NODO-05-HUAYOPAMPA",
+        "nombre": "Estación Sector Huayopampa (Parcela Piloto)",
+        "api_key": os.getenv("API_KEY_NODO_05", "sec_key_huayopampa_secure_05"),
         "sector": "PARCELA_PILOTO",
-        "subcuenca": "Añasmayo",
+        "subcuenca": "Huayopampa",
         "cota_msnm": 320.0,
         "lat": -11.4521,
         "lon": -77.0145,
@@ -178,12 +184,12 @@ STATIONS_PROFILES: List[Dict[str, Any]] = [
         "tipo_fuente": "BOCATOMA_PARCELA"
     },
     {
-        "id_nodo": "NODO-06-PUERTO",
-        "nombre": "Estación Estuario Puerto de Chancay",
-        "api_key": os.getenv("API_KEY_NODO_06", "hash_key_puerto_secure_06"),
-        "sector": "CUENCA_BAJA_LITORAL",
-        "subcuenca": "Litoral",
-        "cota_msnm": 15.0,
+        "id_nodo": "NODO-06-CHANCAY",
+        "nombre": "Estación Valle Bajo y Desembocadura Chancay",
+        "api_key": os.getenv("API_KEY_NODO_06", "sec_key_chancay_secure_06"),
+        "sector": "DESEMBOCADURA",
+        "subcuenca": "Valle_Bajo",
+        "cota_msnm": 25.0,
         "lat": -11.5640,
         "lon": -77.2680,
         "base_temp_c": 22.5,
@@ -197,7 +203,7 @@ STATIONS_PROFILES: List[Dict[str, Any]] = [
         "caudal_k": 2.40,
         "caudal_n": 1.58,
         "avg_rssi": 29,
-        "tipo_fuente": "ESTUARIO_DESEMBOCADURA"
+        "tipo_fuente": "ESTUARIO_FLUVIAL"
     }
 ]
 
@@ -252,43 +258,16 @@ class SensorVoltageConverter:
 # ============================================================================
 class HttpClient:
     @staticmethod
-    def post(url: str, payload: dict, timeout: int = 12) -> Tuple[int, Optional[dict], str]:
+    def post(url: str, payload: dict, timeout: int = 15) -> Tuple[int, Optional[dict], str]:
         data_bytes = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             url,
             data=data_bytes,
             headers={
                 "Content-Type": "application/json",
-                "User-Agent": "Sentinel-H2O-NodeSimulator/2.0 (Huancayo-Chancay)"
+                "User-Agent": "Sentinel-H2O-NodeSimulator/2.0 (Chancay-Huaral-Production)"
             },
             method="POST"
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                status_code = resp.status
-                body = resp.read().decode("utf-8")
-                try:
-                    return status_code, json.loads(body), body
-                except Exception:
-                    return status_code, None, body
-        except urllib.error.HTTPError as e:
-            body = e.read().decode("utf-8") if e.fp else str(e)
-            try:
-                return e.code, json.loads(body), body
-            except Exception:
-                return e.code, None, body
-        except Exception as e:
-            return 0, None, str(e)
-
-    @staticmethod
-    def get(url: str, timeout: int = 10) -> Tuple[int, Optional[dict], str]:
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "Sentinel-H2O-NodeSimulator/2.0 (Huancayo-Chancay)"
-            },
-            method="GET"
         )
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -367,7 +346,7 @@ class DynamicChancaySimulator:
                 
                 if target_station["sector"] in ("CUENCA_ALTA", "CUENCA_ALTA_MEDIA"):
                     evt_type = random.choice(["LLUVIA_TORRENCIAL_AVENIDA", "VERTIDO_ACIDO_MINERO", "LLUVIA_TORRENCIAL_AVENIDA"])
-                elif target_station["sector"] in ("CUENCA_MEDIA_BAJA", "PARCELA_PILOTO"):
+                elif target_station["sector"] in ("CUENCA_BAJA", "PARCELA_PILOTO"):
                     evt_type = random.choice(["ESTRES_SALINO_RIEGO", "DESCARGA_ALCALINA", "ESTIAJE_BAJO_CAUDAL"])
                 else:
                     evt_type = random.choice(event_types)
@@ -453,7 +432,7 @@ class DynamicChancaySimulator:
         id_nodo = station["id_nodo"]
         url = f"{API_BASE_URL}{TELEMETRY_ENDPOINT}"
 
-        status_code, data, text = HttpClient.post(url, payload, timeout=12)
+        status_code, data, text = HttpClient.post(url, payload, timeout=15)
         if status_code == 201 and data:
             alerta_tag = "🚨 [ALERTA DISPARADA]" if data.get("alerta_disparada") else "✅ [NORMAL]"
             logger.info(
@@ -471,44 +450,6 @@ class DynamicChancaySimulator:
             logger.warning(f"⚠️ [{id_nodo}] Respuesta ({status_code}): {text}")
             return False
 
-    def auto_provision_if_needed(self):
-        if not AUTO_PROVISION_NODES:
-            return
-
-        logger.info("Comprobando registro de nodos en la plataforma Sentinel-H2O...")
-        try:
-            nodes_url = f"{API_BASE_URL}/nodes/"
-            status_code, data, text = HttpClient.get(nodes_url, timeout=10)
-            existing_ids = set()
-            if status_code == 200 and isinstance(data, list):
-                existing_ids = {n.get("id_nodo") for n in data if isinstance(n, dict)}
-            
-            for st in STATIONS_PROFILES:
-                if st["id_nodo"] not in existing_ids:
-                    logger.info(f"Provisionando nodo faltante '{st['id_nodo']}' ({st['nombre']})...")
-                    prov_url = f"{API_BASE_URL}/nodes/provision"
-                    prov_payload = {
-                        "id_nodo": st["id_nodo"],
-                        "nombre": st["nombre"],
-                        "sector_cuenca": st["sector"],
-                        "subcuenca": st["subcuenca"],
-                        "latitud": st["lat"],
-                        "longitud": st["lon"],
-                        "cota_msnm": st["cota_msnm"],
-                        "tipo_fuente": st["tipo_fuente"],
-                        "intervalo_envio_min": 10,
-                        "descripcion": f"Nodo telemétrico en {st['nombre']}.",
-                        "distancia_fondo_sensor_cm": st["fondo_sensor_cm"],
-                        "caudal_coef_k": st["caudal_k"],
-                        "caudal_exp_n": st["caudal_n"]
-                    }
-                    p_code, p_data, p_text = HttpClient.post(prov_url, prov_payload, timeout=10)
-                    if p_code == 201 and p_data:
-                        st["api_key"] = p_data.get("api_key_generada", st["api_key"])
-                        logger.info(f"✅ Nodo '{st['id_nodo']}' provisionado con éxito. API Key asignada.")
-        except Exception as e:
-            logger.warning(f"Aviso: No se pudo verificar auto-provisión de nodos ({e}). Continuando con claves configuradas...")
-
     def run(self):
         logger.info("================================================================")
         logger.info("🚀 INICIANDO SIMULADOR DE NODOS TELEMÉTRICOS - SENTINEL-H2O")
@@ -521,8 +462,7 @@ class DynamicChancaySimulator:
         signal.signal(signal.SIGINT, self.stop)
         signal.signal(signal.SIGTERM, self.stop)
 
-        time.sleep(3)
-        self.auto_provision_if_needed()
+        time.sleep(2)
 
         cycle_count = 0
         while self.running:
