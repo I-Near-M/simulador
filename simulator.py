@@ -296,7 +296,7 @@ class DynamicChancaySimulator:
         self.uptime_start = time.time()
         self.active_events: Dict[str, Dict[str, Any]] = {}
         self.battery_levels: Dict[str, float] = {
-            st["id_nodo"]: random.uniform(3.92, 4.12) for st in STATIONS_PROFILES
+            st["id_nodo"]: random.uniform(12.40, 12.85) for st in STATIONS_PROFILES
         }
 
     def stop(self, *args):
@@ -310,14 +310,17 @@ class DynamicChancaySimulator:
         return math.cos(angle)
 
     def update_battery(self, id_nodo: str, diurnal_factor: float) -> float:
-        current_v = self.battery_levels.get(id_nodo, 4.0)
+        current_v = self.battery_levels.get(id_nodo, 12.50)
         if diurnal_factor > 0:
-            delta_v = (4.18 - current_v) * 0.05 * diurnal_factor
+            # En horas diurnas con radiación solar (pico ~14:30), el panel recarga hacia flotación (~13.80V)
+            delta_v = (13.80 - current_v) * 0.05 * diurnal_factor
         else:
-            delta_v = -0.015 * abs(diurnal_factor)
+            # En horas nocturnas sin radiación, descarga gradual por consumo del nodo hacia ~12.10V
+            delta_v = -0.04 * abs(diurnal_factor)
         
-        current_v += delta_v + random.uniform(-0.005, 0.005)
-        current_v = max(3.55, min(4.20, current_v))
+        current_v += delta_v + random.uniform(-0.01, 0.01)
+        # Rango operativo para banco de baterías de 12V (Opalux / Plomo-Ácido / Ciclo Profundo: 11.20V a 14.20V)
+        current_v = max(11.20, min(14.20, current_v))
         self.battery_levels[id_nodo] = round(current_v, 2)
         return self.battery_levels[id_nodo]
 
